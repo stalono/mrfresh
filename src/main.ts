@@ -16,7 +16,7 @@ export async function main() {
     try {
         browser = await connectBrowser();
     } catch {
-        exec("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
+        exec("\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --remote-debugging-port=9222");
         await new Promise(resolve => setTimeout(resolve, 1000));
         const response = await fetch("http://127.0.0.1:9222/json/version");
         const data = await response.json() as { webSocketDebuggerUrl: string };
@@ -27,13 +27,17 @@ export async function main() {
         browser = await connectBrowser(data.webSocketDebuggerUrl);
     }
     const pages = await browser.pages();
-    const page = pages[0];
+    let page = pages[1];
     
+    if (!page) {
+        page = await browser.newPage();
+    }
+
     await page.setViewport({ width: 1920, height: 1080 });
     await page.bringToFront();
 
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    await page.goto('https://discadia.com/server/game-night-/');
+    await page.goto(Config.serverToVoteFor);
 
     const likeButton = await page.waitForSelector('.inline-block.bg-indigo-600.text-white.group-hover\\:bg-white.group-hover\\:text-gray-700.rounded-xl.px-4.py-2.bg-opacity-95', 
         { timeout: 10000 }

@@ -1,3 +1,4 @@
 {
-  "browserWSEndpoint": "ws://127.0.0.1:9222/devtools/browser/e135e910-95e1-4759-b700-bf83294d4f13"
+  "browserWSEndpoint": "ws://127.0.0.1:9222/devtools/browser/0220b69f-a0b6-47dd-ad98-35a81826ec1f",
+  "serverToVoteFor": "https://discadia.com/server/game-night-/"
 }

@@ -44,7 +44,6 @@ const child_process_1 = require("child_process");
 const fs_1 = __importDefault(require("fs"));
 const node_fetch_1 = __importDefault(require("node-fetch"));
 async function main() {
-    console.log(1);
     const connectBrowser = async (browserWSEndpoint = Config.browserWSEndpoint) => {
         return await puppeteer_1.default.connect({
             browserWSEndpoint: browserWSEndpoint
@@ -55,7 +54,7 @@ async function main() {
         browser = await connectBrowser();
     }
     catch {
-        (0, child_process_1.exec)("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
+        (0, child_process_1.exec)("\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --remote-debugging-port=9222");
         await new Promise(resolve => setTimeout(resolve, 1000));
         const response = await (0, node_fetch_1.default)("http://127.0.0.1:9222/json/version");
         const data = await response.json();
@@ -64,24 +63,25 @@ async function main() {
         fs_1.default.writeFileSync("./json/config.json", JSON.stringify(config, null, 2), "utf-8");
         browser = await connectBrowser(data.webSocketDebuggerUrl);
     }
-    console.log(2);
     const pages = await browser.pages();
-    const page = pages[0];
+    let page = pages[1];
+    if (!page) {
+        page = await browser.newPage();
+    }
     await page.setViewport({ width: 1920, height: 1080 });
     await page.bringToFront();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    await page.goto('https://discadia.com/server/game-night-/');
+    await page.goto(Config.serverToVoteFor);
     const likeButton = await page.waitForSelector('.inline-block.bg-indigo-600.text-white.group-hover\\:bg-white.group-hover\\:text-gray-700.rounded-xl.px-4.py-2.bg-opacity-95', { timeout: 10000 });
     await likeButton?.click();
     await solveCaptcha(page);
-    await page.screenshot({ path: 'fullpage.png', fullPage: true });
     const userProfile = await page.waitForSelector('#user-menu', { timeout: 10000 });
     await userProfile?.click();
     const logoutButton = await page.waitForSelector('.flex.items-center.px-3.py-2.bg-red-500.hover\\:bg-red-600.transition-all', { timeout: 10000 });
     await logoutButton?.click();
     const confirmLogoutButton = await page.waitForSelector('#in-content > div > form > button', { timeout: 10000 });
     await confirmLogoutButton?.click();
-    await browser.close();
+    // await browser.close();
 }
 async function solveCaptcha(page) {
     const captchaRootContainer = await page.waitForSelector('s-captcha', { timeout: 10000 });
