@@ -1,0 +1,25 @@
+{
+  "name": "script",
+  "version": "1.0.0",
+  "main": "out/gui.js",
+  "scripts": {
+    "start": "npx tsc && npx electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/electron": "^1.4.38",
+    "@types/jimp": "^0.2.1",
+    "electron": "^36.4.0",
+    "jimp": "^1.6.0",
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^24.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/node-fetch": "^2.6.12"
+  },
+  "description": ""
+}

@@ -1,0 +1,50 @@
+/* General body styling to center content */
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centers vertically */
+    align-items: center; /* Centers horizontally */
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0; /* Optional: light background */
+}
+
+#logs {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+textarea {
+    width: 100%;
+    max-width: 500px;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    resize: none;
+}
+
+div:last-child {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+button {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s;
+    width: 160px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
