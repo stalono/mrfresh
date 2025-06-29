@@ -17,7 +17,8 @@ export async function main() {
         browser = await connectBrowser();
     } catch {
         // exec("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
-        exec("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        // exec("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        exec("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
         await new Promise(resolve => setTimeout(resolve, 2000));
         const response = await fetch("http://127.0.0.1:9222/json/version");
         const data = await response.json() as { webSocketDebuggerUrl: string };
