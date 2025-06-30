@@ -273,7 +273,7 @@ export async function main() {
         const puzzleScreenY = captchaBoundingBox.y + (puzzleCenterCoordinates.y / captchaBoundingBox.height) * captchaBoundingBox.height;
 
         if (!sliderCenter) throw Error;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
         await page.mouse.move(sliderCenter.x, sliderCenter.y);
         await page.mouse.down();
 
@@ -286,23 +286,23 @@ export async function main() {
             { timeout: 10000 }
         );
         await voteButton?.click()
-        const voteButtonAfter = await page.$("#vote-form > button");
-
-        if (voteButtonAfter) {
-            await voteLoginCaptcha();
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        let voteButtonExists;
+        try {
+            voteButtonExists = await page.$("#vote-form > button");
+        } catch { 
+            return;
         }
+
+        if (voteButtonExists) await voteLoginCaptcha();
     }
     await voteLoginCaptcha();
 
-     const userProfile = await page.waitForSelector('#user-menu', 
-        { timeout: 10000 }
-    )
-    await userProfile?.click();
-
-    const logoutButton = await page.waitForSelector('.flex.items-center.px-3.py-2.bg-red-500.hover\\:bg-red-600.transition-all', 
-        { timeout: 10000 }
-    )
-    await logoutButton?.click()
+    await Promise.all([
+        page.waitForNavigation({ timeout: 5000, waitUntil: 'load' }),
+        await page.goto("https://discadia.com/accounts/logout/")
+    ]);
 
     const confirmLogoutButton = await page.waitForSelector('#in-content > div > form > button', 
         { timeout: 10000 }
