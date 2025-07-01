@@ -273,7 +273,7 @@ export async function main() {
         const puzzleScreenY = captchaBoundingBox.y + (puzzleCenterCoordinates.y / captchaBoundingBox.height) * captchaBoundingBox.height;
 
         if (!sliderCenter) throw Error;
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await page.mouse.move(sliderCenter.x, sliderCenter.y);
         await page.mouse.down();
 
