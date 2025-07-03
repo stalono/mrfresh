@@ -1,52 +1,91 @@
 import { findPuzzleCenter } from './captcha';
-import puppeteer, {  ElementHandle, Page } from 'puppeteer'
+import puppeteer, {  ElementHandle, Page, TimeoutError } from 'puppeteer'
 import * as Config from '../json/config.json'
 import { exec } from 'child_process'
 import fs from 'fs'
 import fetch from 'node-fetch'
+import { log, logWhipeout } from './utils/log';
+import { promisify } from 'util';
+import { exit } from 'process';
+
+// process.on('uncaughtException', (err) => {
+//   log(`❌ Uncaught Exception: ${err.message}`);
+//   return;
+// });
+
+// process.on('unhandledRejection', (reason, promise) => {
+//   log(`❌ Unhandled Rejection at: ${promise}, reason: ${reason}`);
+//   return;
+// });
 
 export async function main() {
+    await logWhipeout();
     const connectBrowser = async (browserWSEndpoint: string = Config.browserWSEndpoint) => {
         return await puppeteer.connect({
             browserWSEndpoint: browserWSEndpoint,
             defaultViewport: null,
         })
     }
+    await log("🔄Connecting to a browser...");
     let browser;
     try {
         browser = await connectBrowser();
+        await log("✅Connected to an existing browser instance.\n");
     } catch {
-        // exec("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
-        // exec("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
-        exec("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        await log("🔄No running browser found. Running a new browser instance...");
+        const execAsync = promisify(exec);
+        // execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
+        execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        // execAsync("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
         await new Promise(resolve => setTimeout(resolve, 2000));
+        await log("🔄Connecting to the browser...")
         const response = await fetch("http://127.0.0.1:9222/json/version");
         const data = await response.json() as { webSocketDebuggerUrl: string };
-
         const config = JSON.parse(fs.readFileSync("./json/config.json", "utf-8"));
         config.browserWSEndpoint = data.webSocketDebuggerUrl
         fs.writeFileSync("./json/config.json", JSON.stringify(config, null, 2), "utf-8");
         browser = await connectBrowser(data.webSocketDebuggerUrl);
+        await log("✅Browser has been connected successfully.\n")
     }
     const pages = await browser.pages();
     let page = pages[1];
-    
+
     if (!page) {
+        await log(`🔄Creating a new page...`)
         page = await browser.newPage();
     }
 
     await page.bringToFront();
-
+    await log(`🔄Connecting to discadia...`)
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    
     await page.goto(Config.serverToVoteFor);
+    await log(`✅Successfully connected to ${Config.serverToVoteFor}.\n`)
 
+    const originalWait = page.waitForSelector.bind(page);
+
+    page.waitForSelector = async (...args) => {
+        try {
+            return await originalWait(...args);
+        } catch (err) {
+            if (err instanceof TimeoutError) {
+                await log(`❌ Couldn't find the element. (${args[0]})`);
+            }
+            throw Error;
+        }
+    };
+
+    await log(`🔄Clicking the like button...`)
     const likeButton = await page.waitForSelector('.inline-block.bg-indigo-600.text-white.group-hover\\:bg-white.group-hover\\:text-gray-700.rounded-xl.px-4.py-2.bg-opacity-95', { timeout: 10000 });
     await likeButton?.click();
 
+    await log(`🔄Clicking the discord login button...`)
     const discordLoginButton = await page.waitForSelector('#discord-login-button', { timeout: 10000 })
     await discordLoginButton?.click();
+    await log(`✅Successfully reached discord login captcha.`)
 
     async function discordLoginCaptcha() {
+        await log(`🔄Searching for the captcha placeholder...`)
         const captchaRootContainer = await page.waitForSelector('s-captcha', 
             { timeout: 10000 }
         );
@@ -69,9 +108,11 @@ export async function main() {
                     }, 10000);
                 })
             });
+            await log(`🔄Ticking the checkbox...`)
             await checkbox?.click();
         }
 
+        await log(`🔄Extracting the captcha...`)
         const captchaEncoded = await captchaRootContainer?.evaluate((captchaContainer): Promise<string | null> => {
             return new Promise((resolve) => {
                 const checkExist = setInterval(() => {
@@ -99,11 +140,11 @@ export async function main() {
 
         const captchaBase64Data = captchaEncoded.replace(/^data:image\/\w+;base64,/, '');
         const captchaBuffer = Buffer.from(captchaBase64Data, 'base64');
-
+        await log(`🔄Searching for puzzle center...`);
         const puzzleCenterCoordinates = await findPuzzleCenter(captchaBuffer);
-
         if (!puzzleCenterCoordinates) throw Error();
 
+        await log(`🔄Dragging a slider...`)
         const slider = await captchaRootContainer?.evaluateHandle(captchaContainer => captchaContainer.shadowRoot?.querySelector('.slider-handle') as Element);
         const sliderCenter = await slider?.evaluate(slider => {
             const sliderBoundaries = slider.getBoundingClientRect();
@@ -145,11 +186,13 @@ export async function main() {
         const isDisabled = await page.$eval(".continue-button", (el) => (el as HTMLButtonElement).disabled);
 
         if (!isDisabled) {
+            await log(`✅Captcha has been solved.\n`)
             await Promise.all([
                 page.waitForNavigation({ waitUntil: 'networkidle2' }),
                 voteButton?.click()
             ]);
         } else {
+            await log(`🔄Captcha hasn't been solved. Repeating.`)
             await discordLoginCaptcha();
         }
     }
@@ -273,34 +316,30 @@ export async function main() {
         const puzzleScreenY = captchaBoundingBox.y + (puzzleCenterCoordinates.y / captchaBoundingBox.height) * captchaBoundingBox.height;
 
         if (!sliderCenter) throw Error;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 100));
         await page.mouse.move(sliderCenter.x, sliderCenter.y);
         await page.mouse.down();
 
         await page.mouse.move(puzzleScreenX, puzzleScreenY, { steps: 10 });
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
         await page.mouse.up();
 
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const voteButton = await page.waitForSelector("#vote-form > button", 
-            { timeout: 10000 }
-        );
-        await voteButton?.click()
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        let voteButtonExists;
-        try {
-            voteButtonExists = await page.$("#vote-form > button");
-        } catch { 
-            return;
-        }
+        const captchaSolved = await page.$eval('s-captcha', el => el.hasAttribute('success'))
 
-        if (voteButtonExists) await voteLoginCaptcha();
+        if (captchaSolved) {
+            const voteButton = await page.waitForSelector('.group.p-4.mt-4.rounded-xl.bg-indigo-500.hover\\:bg-white.font-medium.flex-grow.transform.active\\:scale-95', 
+                { timeout: 10000 }
+            );
+            await voteButton?.click()
+        } else {
+            await voteLoginCaptcha();
+        }
     }
     await voteLoginCaptcha();
 
     await Promise.all([
-        page.waitForNavigation({ timeout: 5000, waitUntil: 'load' }),
+        page.waitForNavigation({ timeout: 20000, waitUntil: 'load' }),
         await page.goto("https://discadia.com/accounts/logout/")
     ]);
 
