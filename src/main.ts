@@ -6,17 +6,16 @@ import fs from 'fs'
 import fetch from 'node-fetch'
 import { log, logWhipeout } from './utils/log';
 import { promisify } from 'util';
-import { exit } from 'process';
 
-// process.on('uncaughtException', (err) => {
-//   log(`❌ Uncaught Exception: ${err.message}`);
-//   return;
-// });
+process.on('uncaughtException', (err) => {
+  log(`❌ Uncaught Exception: ${err.message}`);
+  return;
+});
 
-// process.on('unhandledRejection', (reason, promise) => {
-//   log(`❌ Unhandled Rejection at: ${promise}, reason: ${reason}`);
-//   return;
-// });
+process.on('unhandledRejection', (reason, promise) => {
+  log(`❌ Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  return;
+});
 
 export async function main() {
     await logWhipeout();
@@ -35,8 +34,8 @@ export async function main() {
         await log("🔄No running browser found. Running a new browser instance...");
         const execAsync = promisify(exec);
         // execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
-        execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
-        // execAsync("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        // execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        execAsync("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
         await new Promise(resolve => setTimeout(resolve, 2000));
         await log("🔄Connecting to the browser...")
         const response = await fetch("http://127.0.0.1:9222/json/version");
@@ -48,7 +47,7 @@ export async function main() {
         await log("✅Browser has been connected successfully.\n")
     }
     const pages = await browser.pages();
-    let page = pages[1];
+    let page = pages[0];
 
     if (!page) {
         await log(`🔄Creating a new page...`)
@@ -82,7 +81,7 @@ export async function main() {
     await log(`🔄Clicking the discord login button...`)
     const discordLoginButton = await page.waitForSelector('#discord-login-button', { timeout: 10000 })
     await discordLoginButton?.click();
-    await log(`✅Successfully reached discord login captcha.`)
+    await log(`✅Successfully reached discord login captcha.\n`)
 
     async function discordLoginCaptcha() {
         await log(`🔄Searching for the captcha placeholder...`)
@@ -186,13 +185,14 @@ export async function main() {
         const isDisabled = await page.$eval(".continue-button", (el) => (el as HTMLButtonElement).disabled);
 
         if (!isDisabled) {
-            await log(`✅Captcha has been solved.\n`)
+            await log(`✅Discord login captcha has been solved.\n`)
+            await log(`🔄Navigating to discord.com...`)
             await Promise.all([
                 page.waitForNavigation({ waitUntil: 'networkidle2' }),
                 voteButton?.click()
             ]);
         } else {
-            await log(`🔄Captcha hasn't been solved. Repeating.`)
+            await log(`❗Discord login captcha hasn't been solved. Repeating.\n`)
             await discordLoginCaptcha();
         }
     }
@@ -210,7 +210,7 @@ export async function main() {
                 const text = await btn.evaluate(node => node.textContent?.trim().toLowerCase());
                 if (text === 'authorize') {
                     await Promise.all([
-                        page.waitForNavigation({ timeout: 5000, waitUntil: 'load' }),
+                        page.waitForNavigation({ timeout: 60000, waitUntil: 'load' }),
                         btn.click()
                     ]);
                     return;
@@ -221,17 +221,25 @@ export async function main() {
             await page.mouse.wheel({ deltaY: 100 });
             await new Promise(resolve => setTimeout(resolve, 250));
         }
+        await log(`🔄Clicking the auth button...`)
+        await log(`🔄Returning back to discadia...`)
     }
     await pressAuthButton();
     
+    await log(`✅Successfully logged into discord.\n`)
+    await log(`🔄Navigating back to ${Config.serverToVoteFor}...`)
     await Promise.all([
-        page.waitForNavigation({ timeout: 5000, waitUntil: 'load' }),
+        page.waitForNavigation({ timeout: 60000, waitUntil: 'load' }),
         await page.goto(Config.serverToVoteFor)
     ]);
 
+    await log(`🔄Clicking the like button...`)
     const likeButton2 = await page.waitForSelector('.inline-block.bg-indigo-600.text-white.group-hover\\:bg-white.group-hover\\:text-gray-700.rounded-xl.px-4.py-2.bg-opacity-95', { timeout: 10000 });
     await likeButton2?.click();
+    await log(`✅Successfully reached the voting captcha...`)
+
     async function voteLoginCaptcha() {
+        await log(`🔄Searching for the captcha placeholder...`)
         const captchaRootContainer = await page.waitForSelector('s-captcha', 
             { timeout: 10000 }
         );
@@ -254,9 +262,11 @@ export async function main() {
                     }, 10000);
                 })
             });
+            await log(`🔄Ticking the checkbox...`)
             await checkbox?.click();
         }
 
+        await log(`🔄Extracting the captcha...`)
         const captchaEncoded = await captchaRootContainer?.evaluate((captchaContainer): Promise<string | null> => {
             return new Promise((resolve) => {
                 const checkExist = setInterval(() => {
@@ -285,10 +295,12 @@ export async function main() {
         const captchaBase64Data = captchaEncoded.replace(/^data:image\/\w+;base64,/, '');
         const captchaBuffer = Buffer.from(captchaBase64Data, 'base64');
 
+        await log(`🔄Searching for puzzle center...`);
         const puzzleCenterCoordinates = await findPuzzleCenter(captchaBuffer);
 
         if (!puzzleCenterCoordinates) throw Error();
 
+        await log(`🔄Dragging a slider...`)
         const slider = await captchaRootContainer?.evaluateHandle(captchaContainer => captchaContainer.shadowRoot?.querySelector('.slider-handle') as Element);
         const sliderCenter = await slider?.evaluate(slider => {
             const sliderBoundaries = slider.getBoundingClientRect();
@@ -328,23 +340,30 @@ export async function main() {
         const captchaSolved = await page.$eval('s-captcha', el => el.hasAttribute('success'))
 
         if (captchaSolved) {
+            await log(`✅Voting login captcha has been solved.\n`)
+            await log(`🔄Clicking the vote button...`)
             const voteButton = await page.waitForSelector('.group.p-4.mt-4.rounded-xl.bg-indigo-500.hover\\:bg-white.font-medium.flex-grow.transform.active\\:scale-95', 
                 { timeout: 10000 }
             );
             await voteButton?.click()
         } else {
+            await log(`❗Voting login captcha has not been solved... Repeating.\n`)
             await voteLoginCaptcha();
         }
     }
     await voteLoginCaptcha();
 
+    await log(`🔄Navigating to the logout page...`)
     await Promise.all([
-        page.waitForNavigation({ timeout: 20000, waitUntil: 'load' }),
+        page.waitForNavigation({ timeout: 60000, waitUntil: 'load' }),
         await page.goto("https://discadia.com/accounts/logout/")
     ]);
 
+    await log(`🔄Confirming the logout...`)
     const confirmLogoutButton = await page.waitForSelector('#in-content > div > form > button', 
         { timeout: 10000 }
     )
     await confirmLogoutButton?.click()
+
+    await log(`✅Successfully logged out. End of the script.\n`)
 }

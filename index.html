@@ -21,6 +21,12 @@
         document.getElementById("exit").addEventListener("click", () => {
             window.electronAPI.exitApp();
         });
+
+        const textarea = document.getElementById('textarea');
+
+        window.electronAPI.onFileUpdated((newContent) => {
+            textarea.value = newContent;
+        });
     </script>
 </body>
 </html>
