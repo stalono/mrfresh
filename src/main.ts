@@ -34,8 +34,8 @@ export async function main() {
         await log("🔄No running browser found. Running a new browser instance...");
         const execAsync = promisify(exec);
         // execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera GX\\opera.exe\" --remote-debugging-port=9222");
-        // execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
-        execAsync("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        execAsync("\"C:\\Users\\andri\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
+        // execAsync("\"C:\\Users\\dell\\AppData\\Local\\Programs\\Opera\\opera.exe\" --remote-debugging-port=9222");
         await new Promise(resolve => setTimeout(resolve, 2000));
         await log("🔄Connecting to the browser...")
         const response = await fetch("http://127.0.0.1:9222/json/version");
@@ -236,7 +236,7 @@ export async function main() {
     await log(`🔄Clicking the like button...`)
     const likeButton2 = await page.waitForSelector('.inline-block.bg-indigo-600.text-white.group-hover\\:bg-white.group-hover\\:text-gray-700.rounded-xl.px-4.py-2.bg-opacity-95', { timeout: 10000 });
     await likeButton2?.click();
-    await log(`✅Successfully reached the voting captcha...`)
+    await log(`✅Successfully reached the voting captcha...\n`)
 
     async function voteLoginCaptcha() {
         await log(`🔄Searching for the captcha placeholder...`)
@@ -353,11 +353,9 @@ export async function main() {
     }
     await voteLoginCaptcha();
 
+    await new Promise(resolve => setTimeout(resolve, 300));
     await log(`🔄Navigating to the logout page...`)
-    await Promise.all([
-        page.waitForNavigation({ timeout: 60000, waitUntil: 'load' }),
-        await page.goto("https://discadia.com/accounts/logout/")
-    ]);
+    await page.goto("https://discadia.com/accounts/logout")
 
     await log(`🔄Confirming the logout...`)
     const confirmLogoutButton = await page.waitForSelector('#in-content > div > form > button', 
